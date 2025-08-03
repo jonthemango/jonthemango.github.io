@@ -58,23 +58,12 @@ async function getCurrentPositionAsync() {
 }
 
 async function getCurrentPosition() {
-
-    const ttl = 60 * 1000
-    let lastPosition = getFromBrowser('lastPositionCall')
-    if (lastPosition) {
-        const age = Date.now() - lastPosition.timestamp
-        if (age < ttl){ 
-            return lastPosition.position
-        }
-    }
-
     if ("geolocation" in navigator) {
         const position = await getCurrentPositionAsync();
         const latitude = position.coords.latitude;
         const longitude = position.coords.longitude;
         const mapsLink = `https://www.google.com/maps?q=${latitude},${longitude}`
         let retval = {latitude, longitude, mapsLink}
-        storeInBrowser('lastPositionCall', {position, timestamp: Date.now()})
         return retval
     } else {
         // Geolocation is not supported by this browser
