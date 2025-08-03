@@ -66,8 +66,8 @@ function getFromBrowser(key) {
 }
 
 function getLocalDateTime() {
-  const now = new Date();
-  return now.toLocaleString(); // e.g., "03/08/2025, 11:42:10 PM"
+  const now = new Date().toISOString();
+  return now; // e.g., "03/08/2025, 11:42:10 PM"
 }
 
 
