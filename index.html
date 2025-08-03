@@ -106,14 +106,20 @@ async function park(side) {
 
 
 /**
+ * Returns the next date when you need to move your car,
+ * given the parked date and no-parking days of the week.
+ *
  * @param {Date|string} parkedDate - Date you parked
- * @param {string|string[]} noParkingDays - Day(s) of week you must move by (e.g. "Thursday", or ["Thursday", "Friday"])
+ * @param {string|string[]} noParkingDays - Day(s) of week you must move by (e.g. "Thursday" or ["Thursday", "Friday"])
  * @param {Date|string} [currentDate=new Date()] - Current date, optional, defaults to now
- * @returns {string} - The day of the week you need to change your parking
+ * @returns {Date|null} - The date when you need to move your car next, or null if inputs invalid
  */
-function getParkingChangeDay(parkedDate, noParkingDays, currentDate = new Date()) {
+function getParkingChangeDate(parkedDate, noParkingDays, currentDate = new Date()) {
   const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
   const parked = new Date(parkedDate);
   const current = new Date(currentDate);
 
@@ -126,21 +132,33 @@ function getParkingChangeDay(parkedDate, noParkingDays, currentDate = new Date()
 
   let dayToCheck = parked.getDay();
 
-  for (let i = 1; i <= 7; i++) {
+  // Convert to full days (round down)
+
+  for (let i = 1; i <= 14; i++) {  // look ahead up to two weeks to be safe
     const nextDay = (dayToCheck + i) % 7;
     if (noParkDayNums.includes(nextDay)) {
       const changeDate = new Date(parked);
       changeDate.setDate(parked.getDate() + i);
 
+      // Only return a date in the future (or today)
       if (changeDate >= current) {
-        // Return the day BEFORE the no-parking day
-        const dayBefore = (nextDay + 6) % 7; // previous day (mod 7)
-        return daysOfWeek[dayBefore];
+        // Return the day BEFORE the no-parking day — last day you can park
+        changeDate.setDate(changeDate.getDate() - 1);
+        changeDate.setHours(0,0,0,0);
+        
+        const dayName = daysOfWeek[changeDate.getDay()];
+        const monthName = months[changeDate.getMonth()];
+        const dayOfMonth = changeDate.getDate();
+
+        const diffMs = changeDate - current;
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
+
+        return `${dayName}, ${monthName} ${dayOfMonth}. That is ${diffDays} days from today.`;
       }
     }
   }
 
-  return null;
+  return null; // no suitable day found in next 2 weeks (should not happen)
 }
 
 function loadParkInfo() {
@@ -150,8 +168,8 @@ function loadParkInfo() {
     if (lastPark) {
         document.getElementById('parkTime').textContent = `Parked on: ${lastPark.time}`
         document.getElementById('parkSide').textContent = `Side: ${sideMap[lastPark.side]} (no parking on ${noParkMap[lastPark.side]})`
-        let changeDay = getParkingChangeDay(lastPark.time, noParkMap[lastPark.side])
-        document.getElementById('parkChangeOn').textContent = `Change parking spot on ${changeDay}`
+        let changeDay = getParkingChangeDate(lastPark.time, noParkMap[lastPark.side])
+        document.getElementById('parkChangeOn').textContent = `Change parking spot no later than ${changeDay}`
     }
 }
 
