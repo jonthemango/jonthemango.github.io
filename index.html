@@ -70,24 +70,24 @@ function getLocalDateTime() {
   return now.toLocaleString(); // e.g., "03/08/2025, 11:42:10 PM"
 }
 
-async function getCurrentPositionAsync() {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error("Geolocation is not supported"));
-    } else {
-      navigator.geolocation.getCurrentPosition(resolve, reject);
-    }
-  });
+
+function getLocation(callback) {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(callback);
+  }
 }
 
-async function getCurrentPosition() {
+function updateLastPosition() {
     if ("geolocation" in navigator) {
-        const position = await getCurrentPositionAsync();
-        const latitude = position.coords.latitude;
-        const longitude = position.coords.longitude;
-        const mapsLink = `https://www.google.com/maps?q=${latitude},${longitude}`
-        let retval = {latitude, longitude, mapsLink}
-        return retval
+        resetLastPosition()
+        getLocation((position) => {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+            const mapsLink = `https://www.google.com/maps?q=${latitude},${longitude}`
+            let retval = {latitude, longitude, mapsLink}
+            storeInBrowser('lastPosition', retval)
+            setTimeout(loadLastPosition, 100)
+        }) 
     } else {
         // Geolocation is not supported by this browser
         console.error("Geolocation is not supported by your browser.");
@@ -95,15 +95,13 @@ async function getCurrentPosition() {
 }
 
 async function park(side) {
-    let pos = await getCurrentPosition()
+    updateLastPosition()
     let time = getLocalDateTime()
-    console.log(pos)
     storeInBrowser("lastPark", {
-        pos,
         time,
         side
     })
-    setTimeout(load, 100)
+    setTimeout(loadParkInfo, 100)
 }
 
 
@@ -145,24 +143,36 @@ function getParkingChangeDay(parkedDate, noParkingDays, currentDate = new Date()
   return null;
 }
 
-function load() {
+function loadParkInfo() {
     let sideMap = {"L": "left", "R": "right"}
     let noParkMap = {"L": "Friday", "R": "Thursday"}
     let lastPark = getFromBrowser("lastPark")
     if (lastPark) {
         document.getElementById('parkTime').textContent = `Parked on: ${lastPark.time}`
         document.getElementById('parkSide').textContent = `Side: ${sideMap[lastPark.side]} (no parking on ${noParkMap[lastPark.side]})`
-        let mapsHyperlink = document.getElementById('mapsLink')
-        mapsHyperlink.textContent = "Find my car"
-        mapsHyperlink.setAttribute('href', lastPark.pos.mapsLink)
-
         let changeDay = getParkingChangeDay(lastPark.time, noParkMap[lastPark.side])
         document.getElementById('parkChangeOn').textContent = `Change parking spot on ${changeDay}`
     }
 }
 
+function loadLastPosition() {
+    let lastPosition = getFromBrowser("lastPosition")
+    if (lastPosition) {
+        let mapsHyperlink = document.getElementById('mapsLink')
+        mapsHyperlink.textContent = "Find my car"
+        mapsHyperlink.setAttribute('href', lastPosition.mapsLink)
+    }
+}
+
+function resetLastPosition() {
+    let mapsHyperlink = document.getElementById('mapsLink')
+    mapsHyperlink.textContent = ""
+    mapsHyperlink.setAttribute('href', "")
+}
+
 window.addEventListener('DOMContentLoaded', () => {
-    load()
+    loadParkInfo()
+    loadLastPosition()
 })
 
 
